@@ -35,7 +35,7 @@ where CommunityRegion = 'Coastal Urban'
 order by InterventionDateFrom
 
 -- result 
-select * from #t1 order by patientId, interventionDateFrom
+select * from #t1_evergreen order by interventionDateFrom, patientId
 
 
 
