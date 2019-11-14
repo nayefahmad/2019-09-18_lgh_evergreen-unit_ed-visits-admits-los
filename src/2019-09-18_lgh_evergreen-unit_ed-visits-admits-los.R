@@ -19,6 +19,8 @@
 library(tidyverse)
 library(denodoExtractor)
 library(lubridate)
+library(DT)
+library(kableExtra)
 
 setup_sql_server()
 setup_denodo()
@@ -97,7 +99,8 @@ df4.ed_usage <-
   inner_join(df2.ed, 
              by = c("PatientID" = "patient_id")) %>% 
   filter(start_date >= InterventionDateFrom, 
-         start_date <= InterventionDateTo)
+         start_date <= InterventionDateTo) %>% 
+  mutate(ed_visit_id = 1:n())
 
 
 
@@ -110,5 +113,108 @@ df5.acute_usage <-
              by = c("PatientID" = "patient_id")) %>% 
   filter(admit_date >= InterventionDateFrom, 
          admit_date <= InterventionDateTo,
-         !grepl("^EGH.*", nursing_unit_desc_at_admit))
+         !grepl("^EGH.*", nursing_unit_desc_at_admit)) %>% 
+  mutate(acute_visit_id = 1:n())
 
+
+#' # Analysis
+#' 
+
+# Analysis ----------
+n1_ed_pts <- 
+  df4.ed_usage %>% 
+  count(PatientID) %>% 
+  nrow
+
+n2_ed_visits <- df4.ed_usage %>% nrow()
+
+n3_acute_pts <- 
+  df5.acute_usage %>% 
+  count(PatientID) %>% 
+  nrow
+
+n4_acute_stays <- df5.acute_usage %>% nrow()
+
+# pull it all together: 
+data.frame(num_ed_pts = n1_ed_pts, 
+           num_ed_encntrs = n2_ed_visits, 
+           num_acute_pts = n3_acute_pts, 
+           num_acute_encntrs = n4_acute_stays) %>% 
+  gather() %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped",
+                "condensed", 
+                "responsive")) 
+
+              
+
+
+df5.acute_usage %>% 
+  count(nursing_unit_desc_at_admit) %>% 
+  arrange(desc(n)) %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+                           
+
+df6.ed_by_day <- 
+  df4.ed_usage %>% 
+  count(start_date) %>% 
+  fill_dates(start_date, 
+             "2014-01-01", 
+             "2019-11-13") %>% 
+  replace_na(list(n = 0)) 
+
+df6.ed_by_day %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+                           
+# plot 
+df6.ed_by_day%>% 
+  ggplot(aes(x = dates_fill, 
+             y = n)) + 
+  # geom_jitter(alpha = 0.3) + 
+  geom_smooth() + 
+  scale_y_continuous(limits = c(0, 1)) + 
+  labs(title = "LGH Evergreen - Average ED encounters per day", 
+       y = "num encounters", 
+       x = "ED start date") + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+  
+# plot 
+df5.acute_usage %>% 
+  count(admit_date) %>% 
+  fill_dates(admit_date, 
+             "2014-01-01", 
+             "2019-11-13") %>% # View("acute")
+  replace_na(list(n = 0)) %>% 
+  
+  ggplot(aes(x = dates_fill, 
+             y = n)) + 
+  # geom_jitter(alpha = 0.3, 
+  #             height = .05) + 
+  geom_smooth() + 
+  scale_y_continuous(limits = c(0, 1)) + 
+  labs(title = "LGH Evergreen - Average acute encounters per day", 
+       y = "num encounters", 
+       x = "Acute admission date") + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+
+#' Outputs 
+#' 
+
+# write_csv(df4.ed_usage,
+#           here::here("results",
+#                      "dst",
+#                      "2019-11-13_lgh_evergreen-pts-in-ED.csv"))
+# 
+# write_csv(df5.acute_usage,
+#           here::here("results",
+#                      "dst",
+#                      "2019-11-13_lgh_evergreen-pts-in-acute.csv"))
+                          
