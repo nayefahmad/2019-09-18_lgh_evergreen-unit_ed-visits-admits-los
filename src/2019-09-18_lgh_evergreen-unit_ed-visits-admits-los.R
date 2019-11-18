@@ -84,7 +84,8 @@ df3.acute <-
          admit_date_id, 
          disch_date_id, 
          # nursing_unit_desc_at_ad, 
-         nursing_unit_desc_at_admit) %>% 
+         nursing_unit_desc_at_admit, 
+         admit_to_disch_los_elapsed_time_days) %>% 
   collect() %>% 
   mutate(admit_date = ymd(admit_date_id))
 
@@ -176,13 +177,17 @@ df6.ed_by_day%>%
              y = n)) + 
   # geom_jitter(alpha = 0.3) + 
   geom_smooth() + 
-  scale_y_continuous(limits = c(0, 1)) + 
+  coord_cartesian(ylim = c(0, 1)) + 
   labs(title = "LGH Evergreen - Average ED encounters per day", 
        y = "num encounters", 
        x = "ED start date") + 
   theme_light() +
   theme(panel.grid.minor = element_line(colour = "grey95"), 
-        panel.grid.major = element_line(colour = "grey95"))
+        panel.grid.major = element_line(colour = "grey95"),
+        axis.title.x = element_text(size = 14),
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
+        axis.title.y = element_text(size = 14))
   
 # plot 
 df5.acute_usage %>% 
@@ -194,16 +199,42 @@ df5.acute_usage %>%
   
   ggplot(aes(x = dates_fill, 
              y = n)) + 
-  # geom_jitter(alpha = 0.3, 
-  #             height = .05) + 
+  # geom_jitter(alpha = 0.3,
+  #             height = .05) +
   geom_smooth() + 
-  scale_y_continuous(limits = c(0, 1)) + 
+  coord_cartesian(ylim = c(0, 1)) + 
   labs(title = "LGH Evergreen - Average acute encounters per day", 
        y = "num encounters", 
        x = "Acute admission date") + 
   theme_light() +
   theme(panel.grid.minor = element_line(colour = "grey95"), 
-        panel.grid.major = element_line(colour = "grey95"))
+        panel.grid.major = element_line(colour = "grey95"), 
+        axis.title.x = element_text(size = 14),
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
+        axis.title.y = element_text(size = 14))
+
+
+# ALOS 
+df5.acute_usage %>% 
+  group_by(year(admit_date)) %>% 
+  summarize(alos = mean(admit_to_disch_los_elapsed_time_days, 
+                        na.rm = TRUE), 
+            los_median = median(admit_to_disch_los_elapsed_time_days, 
+                                na.rm = TRUE))
+
+# plot
+df5.acute_usage %>% 
+  ggplot(aes(x = admit_to_disch_los_elapsed_time_days)) + 
+  geom_density() + 
+  facet_wrap(~ year(admit_date))
+
+# outliers 
+df5.acute_usage %>% 
+  filter(admit_to_disch_los_elapsed_time_days > 20) %>% 
+  select(admit_date, 
+         admit_to_disch_los_elapsed_time_days) %>% 
+  arrange(desc(admit_to_disch_los_elapsed_time_days))
 
 #' Outputs 
 #' 
